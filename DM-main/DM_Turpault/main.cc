@@ -97,9 +97,9 @@ int main()
   cout<<Rm<<endl;*/
 
 
-  /*
+
   int n; n=100;
-  int m;m=1;
+  int m;m=100;
   SparseMatrix<double> An(n,n);
   SparseMatrix<double> C(n,n);
   MatrixXd Bn(n,n);
@@ -113,7 +113,7 @@ int main()
   {
     x0(i)=1.;
   }
-  b.Random(n);
+  b=x0;
 
   Bnn=MatrixXd::Random(n,n);
   Bn=(Bnn+MatrixXd::Constant(n,n,1.))/2.;
@@ -123,30 +123,38 @@ int main()
 
 
   ResMin(An,b,x0,0.00001,1000,x);
-  cout<<"Résidu minimium donne x="<<endl;
-  cout<<An*x-b<<endl;
+  cout<<"Résidu minimium donne r="<<endl;
+  cout<<(An*x-b).norm()<<endl;
 
-
-  GradPasOptimal(An,b,x0,0.00001,1000,x);
-  cout << "Gradient pas optimal donne x="<< endl;
+/*
+  GradPasOptimal(An,b,x0,0.000001,1000,x);
+  cout << "Gradient pas optimal donne r="<< endl;
   cout << An*x-b << endl;
 
   cout<<"Gmres"<<endl;
-  GMRes(An,b,x0,0.00001,1000,x,m);
-  cout<<"GMRes donne x="<<endl;
-  cout<<An*x-b<<endl;
-  */
+  GMRes(An,b,x0,0.000001,1000,x,m);
+  cout<<"GMRes donne r="<<endl;
+  cout<<An*x-b<<endl;*/
 
+  cout<<"ResMin_cond_gauche"<<endl;
+  ResMin_cond_gauche(An,b,x0,0.00001,1000,x);
+  cout<<"Résidu minimium preconditionné à gauche donne r="<<endl;
+  cout<< (An*x-b).norm() <<endl;
+
+  cout<<"ResMin_cond_droite"<<endl;
+  ResMin_cond_droite(An,b,x0,0.00001,1000,x);
+  cout<<"Résidu minimium preconditionné à droite donne r="<<endl;
+  cout<< (An*x-b).norm() <<endl;
 
   //    Definition    //
 
-  SparseMatrix<double> An;
+  /*SparseMatrix<double> An;
   MatrixXd bn;
   VectorXd x0;
   VectorXd x;
   VectorXd residu;
 
-  int m=1;
+  int m=1000;
   double t1,t2;
 
 
@@ -179,17 +187,47 @@ int main()
   cout << residu.norm() << endl;
   //cout << "GMRes donne x="<<endl;
   //cout << x(25709) << endl;
-  cout << "Temps d'execution : "<< (t2 - t1) / CLOCKS_PER_SEC <<" en seconde" <<endl;
+  cout << "Temps d'execution : "<< (t2 - t1) / CLOCKS_PER_SEC <<" en seconde" <<endl;*/
 /*
   //Test Resol_LU
-  MatrixXd M(3,3); SparseMatrix<double> C(3,3);
-  M<<2.,-1.,0.,-0.5,1.5,-1.,0.,-0.66,1.33;
-  C=M.sparseView();
-  cout<<"M="<<M<<endl;
+  MatrixXd L(3,3); SparseMatrix<double> L_(3,3);MatrixXd U(3,3); SparseMatrix<double> U_(3,3);
+  L<<1.,0.,0.,-0.5,1.,0.,0.,-0.666,1.;
+  U<<2.,-1.,0.,0.,1.5,-1.,0.,0.,1.333;
+  L_=L.sparseView();  U_=U.sparseView();
+  cout<<"L="<<endl<<L_<<endl;cout<<"U="<<endl<<U_<<endl;
   VectorXd x(3);
   VectorXd b(3);b<<1.,2.,3.;cout<<"b="<<b<<endl;
-  x=Resol_LU(C,b);
-  cout<<x<<endl;*/
+  x=Resol_LU(L_,U_,b);
+  cout<<L*U*x-b<<endl;*/
+  /*
+  SparseMatrix<double> E(4,4); SparseMatrix<double> F(4,4); SparseMatrix<double> D(4,4); SparseMatrix<double> D_1(4,4);
+
+  for (int i=0; i<C.outerSize(); ++i)
+  {
+    for (SparseMatrix<double>::InnerIterator it(C,i); it; ++it)
+    {
+      //it.value();
+      //it.row();   // row index
+      //it.col();   // col index (here it is equal to i)
+      //it.index(); // inner index, here it is equal to it.row()
+
+      if (it.row()==it.col())
+      {
+        D.coeffRef(it.row(),it.col()) = it.value();
+        D_1.coeffRef(it.row(),it.col()) = 1./it.value();
+      }
+      if (it.row()>it.col())
+      {
+        E.coeffRef(it.row(),it.col()) = it.value();
+      }
+
+      if (it.row()<it.col())
+      {
+        F.coeffRef(it.row(),it.col()) = it.value();
+      }
+    }
+  }
+    cout<<"D="<<endl<<D<<endl;cout<<"E="<<endl<<E<<endl;cout<<"F="<<endl<<F<<endl;cout<<"D-1="<<endl<<D_1<<endl;*/
 
   return 0;
 

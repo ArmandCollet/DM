@@ -102,81 +102,158 @@ void ResMin (const SparseMatrix<double> A,const VectorXd b, const VectorXd x0,co
 }
 
 //Résolution à partir d'une Décomposition LU
-VectorXd Resol_LU(SparseMatrix <double> M, VectorXd b)
+VectorXd Resol_LU(SparseMatrix <double> L, SparseMatrix<double> U, VectorXd b)
 {
-  int n=M.rows();
+  int n=L.rows();
   VectorXd x(n), y(n);
   double s1, s2;
 
   y(0) = b(0);
   for(int i=1; i<n; i++)
+  //for (int i=1; i<M.outerSize(); i++)
   {
-    s1=0.;cout<<"test"<<endl;
+    s1=0.;
     for(int k=0; k<i; k++)
+    //for (SparseMatrix<double>::InnerIterator it(M,i); it; ++it)
+
     {
-      s1 += M.coeffRef(i,k)*y(k);
+      //if(it.row()>it.col())
+        //s1 += it.value()*y(it.row());
+      s1 += L.coeffRef(i,k)*y(k);
     }
-    y(i)=b(i)-s1; cout<<y(i)<<endl;
+    y(i)=b(i)-s1;
   }
-  x(n-1)=y(n-1)/M.coeffRef(n-1,n-1);
+  x(n-1)=y(n-1)/U.coeffRef(n-1,n-1);
 
 
   for (int i=n-2; i>=0; i--)
   {
-    s2=0.;  cout<<"test1"<<endl;
+    s2=0.;
 
     for (int k=i+1;k<n;k++)
+    //for (SparseMatrix<double>::InnerIterator it(M,i);it;++it)
     {
-      s2 += M.coeffRef(i,k)*x(k);
+      //if (it.row()<it.col())
+        //s2 += it.value()*x(it.row());
+      s2 += U.coeffRef(i,k)*x(k);
     }
-    x(i) = (y(i)-s2)/M.coeffRef(i,i);
+    x(i) = (y(i)-s2)/U.coeffRef(i,i);
   }
   return x;
 }
 
+
+
 //Résidu minimum préconditionné à gauche
 void ResMin_cond_gauche(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const Eigen::VectorXd x0, const double epsilon, const int kmax, Eigen::VectorXd & x)
 {
-  int k=0; int m=A.rows();
+  int m=A.rows();
   VectorXd r(b.size()); r=b-A*x0;
-  VectorXd z(b.size()); VectorXd q(m); VectorXd w(m);
+  VectorXd z(b.size()); VectorXd z1(b.size()); VectorXd q(m); VectorXd q1(m); VectorXd w(m);
   double alpha;
-  SparseMatrix<double> M(m,m); SparseMatrix<double> E(m,m); SparseMatrix<double> F(m,m); SparseMatrix<double> D(m,m); SparseMatrix<double> D_1(m,m);
-
-  for (int i=0;i<m;i++)
+  SparseMatrix<double> L(m,m);SparseMatrix<double> U(m,m); SparseMatrix<double> E(m,m); SparseMatrix<double> F(m,m); SparseMatrix<double> D(m,m); SparseMatrix<double> D_1(m,m);
+  SparseLU<SparseMatrix<double> , COLAMDOrdering<int> > solver;
+  for (int i=0; i<A.outerSize(); ++i)
   {
-    for (SparseMatrix<double>::InnerIterator it(A,i);it;++it)
+    for (SparseMatrix<double>::InnerIterator it(A,i); it; ++it)
     {
-      D.coeffRef(i,i) = it.value(); D_1.coeffRef(i,i)=1./it.value();
 
-      for (int j=0;j<i;j++)
+      if (it.row()==it.col())
       {
-        E.coeffRef(i,j)=it.value();
+        D.coeffRef(it.row(),it.col()) = it.value();
+        D_1.coeffRef(it.row(),it.col()) = 1./it.value();
+      }
+      if (it.row()>it.col())
+      {
+        E.coeffRef(it.row(),it.col()) = -it.value();
       }
 
-      for (int j=i+1;j<m;j++)
+      if (it.row()<it.col())
       {
-        F.coeffRef(i,j)=it.value();
+        F.coeffRef(it.row(),it.col()) = -it.value();
       }
     }
-
   }
+  //cout<<"A="<<endl<<A<<endl;cout<<"D="<<endl<<D<<endl;cout<<"E="<<endl<<E<<endl;cout<<"F="<<endl<<F<<endl;
+  L = (D-E)*D_1; U = (D-F);
+  //cout<<L*U-(D-E)*D_1*(D-F)<<endl;
+  x = x0;
+  /*cout << "premiere resolution LU"<<endl;
+  q1 = L.triangularView<Lower>().solve(r);
+  q = U.triangularView<Upper>().solve(q1);*/
+  q = Resol_LU(L,U,r);
 
-  M=(D-E)*D_1*(D-F);
-
-  x=x0;
-
-  q=Resol_LU(M,r);
+  int k=0;
 
   while ((r.norm()>epsilon) && (k<=kmax))
   {
-    w=A*q;
-    z=Resol_LU(M,w);
-    alpha=q.dot(z)/z.dot(z);
-    x = x +alpha*q;
+    //cout<<"RM préconditionné à gauche, itération n°"<<k<<endl;
+    w = A*q;
+    z = Resol_LU(L,U,w);
+    //z1 = L.triangularView<Lower>().solve(w);
+    //z = U.triangularView<Upper>().solve(z1);
+    alpha = q.dot(z)/z.dot(z);
+    x = x + alpha*q;
     r = r - alpha*w;
-    q=q-alpha*z;
-    k+=1;
+    q = q - alpha*z;
+    k += 1;
+  }
+  cout<<"Nombre d'itérations ="<<k<<endl;
+  if (k>kmax)
+  {
+    cout<<"Tolérance non atteinte: "<<endl;
+  }
+}
+
+void ResMin_cond_droite(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const Eigen::VectorXd x0, const double epsilon, const int kmax, Eigen::VectorXd & x)
+{
+  int m=A.rows();
+  VectorXd r(b.size()); r=b-A*x0;
+  VectorXd z(b.size());
+  VectorXd q(m);
+  VectorXd w(m);
+  double alpha;
+  SparseMatrix<double> L(m,m);SparseMatrix<double> U(m,m); SparseMatrix<double> E(m,m); SparseMatrix<double> F(m,m); SparseMatrix<double> D(m,m); SparseMatrix<double> D_1(m,m);
+
+  for (int i=0; i<A.outerSize(); ++i)
+  {
+    for (SparseMatrix<double>::InnerIterator it(A,i); it; ++it)
+    {
+
+      if (it.row()==it.col())
+      {
+        D.coeffRef(it.row(),it.col()) = it.value();
+        D_1.coeffRef(it.row(),it.col()) = 1./it.value();
+      }
+      if (it.row()>it.col())
+      {
+        E.coeffRef(it.row(),it.col()) = -it.value();
+      }
+
+      if (it.row()<it.col())
+      {
+        F.coeffRef(it.row(),it.col()) = -it.value();
+      }
+    }
+  }
+
+  L = (D-E)*D_1; U = (D-F);
+
+  x = x0;
+
+  int k=0;
+
+  while ((r.norm()>epsilon) && (k<=kmax))
+  {
+    //cout<<"RM préconditionné à gauche, itération n°"<<k<<endl;
+
+    z = Resol_LU(L,U,r);
+    w = A*z;
+    alpha = r.dot(w)/w.dot(w);
+    x = x + alpha*z;
+    r = r - alpha*w;
+
+    k += 1;
   }
   cout<<"Nombre d'itérations ="<<k<<endl;
   if (k>kmax)
@@ -187,15 +264,17 @@ void ResMin_cond_gauche(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, 
 
 
 
+
+
 //Arnoldi
 std::vector<Eigen::MatrixXd> Arnoldi(const Eigen::SparseMatrix<double> A, Eigen::VectorXd & v, const int m)
 {
   //Déclaration des variables
 
-  MatrixXd Vm_1(v.size(),m+1); Vm_1 = MatrixXd::Constant(v.size(),m+1);
+  MatrixXd Vm_1(v.size(),m+1); Vm_1 = MatrixXd::Constant(v.size(),m+1,0.);
   MatrixXd Vm(v.size(),m);
   MatrixXd Hm(m,m);
-  MatrixXd Hm_barre(m+1,m); Hm_barre = MatrixXd::Constant(m+1,m);
+  MatrixXd Hm_barre(m+1,m); Hm_barre = MatrixXd::Constant(m+1,m,0.);
   MatrixXd w(v.size(),m);
   vector<Eigen::MatrixXd> HmVm;
 
@@ -234,56 +313,12 @@ std::vector<Eigen::MatrixXd> Arnoldi(const Eigen::SparseMatrix<double> A, Eigen:
   return HmVm;
 }
 
-/*
-//Givens avec produit de matrices honteux
-Eigen::MatrixXd  Givens_Rotation(const Eigen::MatrixXd M, int i, int j)
-{
-  // Constitution de la matrice de rotation
-
-  Eigen::MatrixXd Rij(max(M.rows(), M.cols()),max(M.rows(), M.cols()));
-  MatrixXd In(max(M.rows(), M.cols()),max(M.rows(), M.cols()));
-
-  In  = MatrixXd::Identity(max(M.cols(), M.rows()),max(M.cols(), M.rows()));
-  Rij = In;
-
-  double a = sqrt( pow(M(j,j),2) + pow(M(i,j),2) );
-  double c = M(j,j)/a;
-  double s = -M(i,j)/a;
-  Rij(j,j) = c;
-  Rij(i,i) = c;
-  Rij(i,j) = s;
-  Rij(j,i) = -s;
-
-  return Rij;
-}
-
-void Givens(const Eigen::MatrixXd A, Eigen::MatrixXd & Q, Eigen::MatrixXd & R)
-
-//Décomposition QR Givens
-{
-  Eigen::MatrixXd Rij(max(A.rows(), A.cols()),max(A.cols(), A.rows()));
-  MatrixXd In(max(A.rows(), A.cols()),max(A.rows(), A.cols()));
-
-  In = MatrixXd::Identity(max(A.cols(), A.rows()),max(A.cols(), A.rows()));
-  Q = In;
-  R = A;
-
-  for (int i = 0; i<A.rows(); i++)
-  {
-    for (int j = 0; j<i; j++)
-    {
-      Rij = Givens_Rotation(R, i, j);
-      Q=Q*Rij.transpose();
-      R=Rij*R;
-    }
-  }
-}*/
 
 //Givens honnête
 void GivensOpt(const Eigen::MatrixXd A, Eigen::MatrixXd & Q, Eigen::MatrixXd & R)
 {
-  int m; m=A.rows();int n=A.cols();
-  R=A;Q=MatrixXd::Identity(m,m);
+  int m; m = A.rows(); int n = A.cols();
+  R = A ; Q = MatrixXd::Identity(m,m);
 
   for (int i=0;i<m;i++)
   {
@@ -318,16 +353,16 @@ void GivensOpt(const Eigen::MatrixXd A, Eigen::MatrixXd & Q, Eigen::MatrixXd & R
 void resol_syst_triang_sup(const Eigen::MatrixXd A, Eigen::VectorXd & y, const Eigen::VectorXd b)
 {
   double S;
-  int m; m=A.rows();
+  int m; m = A.rows();
 
   for (int i=m-1; i>=0;i--)
   {
-    S=0.;
+    S = 0.;
     for (int j=m-1;j>i;j--)
     {
-      S+=A(i,j)*y(j);
+      S += A(i,j)*y(j);
     }
-    y(i)=(b(i)-S)/A(i,i);
+    y(i) = (b(i)-S)/A(i,i);
   }
 
 }

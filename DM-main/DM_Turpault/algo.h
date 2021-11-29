@@ -13,11 +13,6 @@ void ResMin(const Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const 
 
 std::vector<Eigen::MatrixXd> Arnoldi(const Eigen::SparseMatrix<double> A, Eigen::VectorXd & v, const int m);
 
-
-//Eigen::MatrixXd Givens_Rotation(const Eigen::MatrixXd M, int i, int j);
-
-//void Givens(const Eigen::MatrixXd A, Eigen::MatrixXd & Qm, Eigen::MatrixXd & Rm);
-
 void GivensOpt(const Eigen::MatrixXd A, Eigen::MatrixXd & Q, Eigen::MatrixXd & R);
 
 void GMRes(const Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const Eigen::VectorXd x0, const double epsilon, const int kmax, Eigen::VectorXd & x, const int m);
@@ -30,8 +25,11 @@ void MatVecCSR(const std::tuple<std::vector<double>, std::vector<int>, std::vect
 
 
 Eigen::SparseMatrix<double> Lecture_Matrice_A(std::string fichier);
+
 Eigen::VectorXd Lecture_Matrice_b(std::string fichier);
 
 void ResMin_cond_gauche(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const Eigen::VectorXd x0, const double epsilon, const int kmax, Eigen::VectorXd & x);
 
-Eigen::VectorXd Resol_LU(Eigen::SparseMatrix<double> M, Eigen::VectorXd b);
+Eigen::VectorXd Resol_LU(Eigen::SparseMatrix<double> L, Eigen::SparseMatrix<double> U,Eigen::VectorXd b);
+
+void ResMin_cond_droite(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const Eigen::VectorXd x0, const double epsilon, const int kmax, Eigen::VectorXd & x);
