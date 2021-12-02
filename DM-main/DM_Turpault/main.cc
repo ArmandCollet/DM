@@ -49,7 +49,6 @@ int main()
     x0(i)=i+1;b(i)=i;
   }
 
-
   v=VectorXd::LinSpaced(n,0.,(double)(n-1));
   An=sparseMatrix<double>::rsparseMatrix(n,n,nnz=100);
   Bn=(MatrixXd::Random(n,n)+MatrixXd::Constant(n,n,1.))/2.;
@@ -98,96 +97,156 @@ int main()
 
 
 
-  int n; n=100;
-  int m;m=100;
-  SparseMatrix<double> An(n,n);
-  SparseMatrix<double> C(n,n);
-  MatrixXd Bn(n,n);
-  MatrixXd Bnn(n,n);
-  SparseMatrix <double> In(n,n);
-  VectorXd x0(n);
-  VectorXd x(n);
-  VectorXd b(n);
+  //--------------------------------------------Code propre-----------------------------
 
-  for (int i=0;i<n;i++)
-  {
-    x0(i)=1.;
-  }
-  b=x0;
+  //Choix de la matrice à utiliser
 
-  Bnn=MatrixXd::Random(n,n);
-  Bn=(Bnn+MatrixXd::Constant(n,n,1.))/2.;
-  C=Bn.sparseView();
-  In.setIdentity();
-  An=In+1./pow(n,2)*C.transpose()*C;
+  int userChoiceMat;
+  cout << "------------------------------------" << endl;
+  cout << "Choississez le matrice : " << endl;
+  cout << "1) Matrice aléatoire de la question 1"<< endl;
+  cout << "2) Contraintes thermiques pour un transistor" << endl;
+  cout << "3) Calcul météo avec le modèle de St Venant" << endl;
+  cin >> userChoiceMat;
 
 
-  ResMin(An,b,x0,0.00001,1000,x);
-  cout<<"Résidu minimium donne r="<<endl;
-  cout<<(An*x-b).norm()<<endl;
+  int userChoiceSolv; // Choix du solveur à utiliser
 
-/*
-  GradPasOptimal(An,b,x0,0.000001,1000,x);
-  cout << "Gradient pas optimal donne r="<< endl;
-  cout << An*x-b << endl;
+// Choix du solveur
+	cout << "------------------------------------" << endl;
+	cout << "Choississez le solveur : " << endl;
+	cout << "1) GPO"<< endl;
+	cout << "2) Résidu minimum" << endl;
+	cout << "3) GMRes" << endl;
+	cout << "4) Résidu minimum conditionné à gauche" << endl;
+	cout << "5) Résidu minimum conditionné à droite"<< endl;
+	cout << "6) Résidu minimum conditionné à droite flexible"<< endl;
+	cout << "7) ..."<< endl;
+	cin >> userChoiceSolv;
 
-  cout<<"Gmres"<<endl;
-  GMRes(An,b,x0,0.000001,1000,x,m);
-  cout<<"GMRes donne r="<<endl;
-  cout<<An*x-b<<endl;*/
+  switch(userChoiceMat)
+	{
+    case 1:
+    { //Matrice aléatoire de la question 1
+      int n;
+      cout << "Choisissez la taille de la matrice" << endl;
+      cin >> n;
+      SparseMatrix<double> An(n,n), C(n,n), In(n,n);
+      MatrixXd Bn(n,n), Bnn(n,n);
+      VectorXd x0(n), x(n), b(n);
 
-  cout<<"ResMin_cond_gauche"<<endl;
-  ResMin_cond_gauche(An,b,x0,0.00001,1000,x);
-  cout<<"Résidu minimium preconditionné à gauche donne r="<<endl;
-  cout<< (An*x-b).norm() <<endl;
+      for (int i=0;i<n;i++)
+      {
+        x0(i)=i;
+      }
+      b=x0;
 
-  cout<<"ResMin_cond_droite"<<endl;
-  ResMin_cond_droite(An,b,x0,0.00001,1000,x);
-  cout<<"Résidu minimium preconditionné à droite donne r="<<endl;
-  cout<< (An*x-b).norm() <<endl;
+      Bnn=MatrixXd::Random(n,n);
+      Bn=(Bnn+MatrixXd::Constant(n,n,1.))/2.;
+      C=Bn.sparseView();
+      In.setIdentity();
+      An=In+1./pow(n,2)*C.transpose()*C;
 
-  //    Definition    //
+      switch(userChoiceSolv)
+      {
+        case 1: //GPO
+        GradPasOptimal(An,b,x0,0.000001,1000,x);
+        break;
 
-  /*SparseMatrix<double> An;
-  MatrixXd bn;
-  VectorXd x0;
-  VectorXd x;
-  VectorXd residu;
+        case 2: //Résidu minimum
+        ResMin(An,b,x0,0.00001,1000,x);
+        break;
 
-  int m=1000;
-  double t1,t2;
+        case 3: //GMRes
+        int m;
+        cout << "Chosissez m"<< endl;
+        cin >> m;
+        GMRes(An,b,x0,0.000001,1000,x,m);
+        break;
 
+        case 4: //Résidu minimum conditionné à gauche
+        ResMin_cond_gauche(An,b,x0,0.00001,1000,x);
+        break;
 
-  //    Initialisation    //
+        case 5: //Résidu minimum conditionné à droite
+        ResMin_cond_droite(An,b,x0,0.00001,1000,x);
+        break;
 
-  An=Lecture_Matrice_A("/home/armand/DM/DM-main/DM_Turpault/smt/smt.mtx");
-  bn=Lecture_Matrice_b("/home/armand/DM/DM-main/DM_Turpault/smt/smt_b.mtx");
-  x0.resize(bn.size());
-  x.resize(bn.size());
-  residu.resize(bn.size());
+        default:
+        cout << "Ce choix n’est pas possible ! Veuillez recommencer !" << endl;
+        exit(0);
 
-  for (int i=0; i<bn.size();i++)
-    {
-      x0(i)=i;
+      }
+      break;
     }
 
+    case 2: // Contraintes thermiques pour un transistor
+    {
 
-  //    Calcul    //
+      //    Definition    //
 
-  cout <<"Calcul ..."<<endl;
-  t1 = clock();
-  //GradPasOptimal(An,bn,x0,0.00001,1000,x);
-  //ResMin(An,bn,x0,0.00001,1000,x);
-  ResMin_cond_gauche(An,bn,x0,0.00001,1000,x);
-  //GMRes(An,bn,x0,0.00001,1000,x,m);
-  t2=clock();
+      SparseMatrix<double> An;
+      MatrixXd bn;
+      VectorXd x0, x;
+      double t1,t2;
 
-  residu = An*x-bn;
-  cout << endl << "Norme du résidu = "<< endl;
-  cout << residu.norm() << endl;
-  //cout << "GMRes donne x="<<endl;
-  //cout << x(25709) << endl;
-  cout << "Temps d'execution : "<< (t2 - t1) / CLOCKS_PER_SEC <<" en seconde" <<endl;*/
+      //   Lecture de la matrice   //
+
+      An=Lecture_Matrice_A("/home/valentin/DM/DM-main/DM_Turpault/smt/smt.mtx");
+      bn=Lecture_Matrice_b("/home/valentin/DM/DM-main/DM_Turpault/smt/smt_b.mtx");
+      x0.resize(bn.size());
+      x.resize(bn.size());
+
+      for (int i=0; i<bn.size();i++)
+      {
+        x0(i)=i;
+      }
+
+      cout <<"Calcul ..."<<endl;
+      t1 = clock();
+
+      switch(userChoiceSolv)
+      {
+        case 1: //GPO
+        GradPasOptimal(An,bn,x0,0.000001,1000,x);
+        break;
+
+        case 2: //Résidu minimum
+        ResMin(An,bn,x0,0.00001,1000,x);
+        break;
+
+        case 3: //GMRes
+        int m;
+        cout << "Chosissez m"<< endl;
+        cin >> m;
+        GMRes(An,bn,x0,0.000001,1000,x,m);
+        break;
+
+        case 4: //Résidu minimum conditionné à gauche
+        ResMin_cond_gauche(An,bn,x0,0.00001,1000,x);
+        break;
+
+        case 5: //Résidu minimum conditionné à droite
+        ResMin_cond_droite(An,bn,x0,0.00001,1000,x);
+        break;
+
+        default:
+        cout << "Ce choix n’est pas possible ! Veuillez recommencer !" << endl;
+        exit(0);
+
+      }
+
+      t2=clock();
+      cout << "Temps d'execution : "<< (t2 - t1) / CLOCKS_PER_SEC <<" en seconde" <<endl;
+      break;
+    }
+
+    default:
+    cout << "Ce choix n’est pas possible ! Veuillez recommencer !" << endl;
+    exit(0);
+  }
+
+
 /*
   //Test Resol_LU
   MatrixXd L(3,3); SparseMatrix<double> L_(3,3);MatrixXd U(3,3); SparseMatrix<double> U_(3,3);

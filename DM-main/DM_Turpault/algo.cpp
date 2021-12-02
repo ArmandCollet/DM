@@ -47,27 +47,31 @@ void MatVecCSR(const std::tuple<std::vector<double>, std::vector<int>, std::vect
 }
 //Fin CSR
 
-// Gradient à pas optimal
+// -------------------------------------Gradient à Pas Optimal---------------------------------------------------
+
 void GradPasOptimal (const SparseMatrix<double> A, const VectorXd b, const VectorXd x0, const double epsilon, const int kmax, VectorXd & x)
 {
   //Initialisation
   int k=0;
-  VectorXd r(b.size()); r=b-A*x0;
-  VectorXd z(b.size());
+  VectorXd r(b.size()), z(b.size());
   double alpha;
+  r=b-A*x0;
   x=x0;
 
   //Boucle
   while((r.norm()>epsilon) && (k<=kmax))
   {
+    cout << r.norm() << endl;
     z =A*r;
     alpha = r.dot(r) / z.dot(r);
     x = x + alpha*r;
     r = r - alpha*z;
     k+=1;
-    //cout << r.norm() << endl;
   }
+
+  cout << "r="<<r.norm() << endl;
   cout<<"Nombre d'itérations ="<<k<<endl;
+
   if (k>kmax)
   {
     cout<<"Tolérance non atteinte: "<<endl;
@@ -75,16 +79,26 @@ void GradPasOptimal (const SparseMatrix<double> A, const VectorXd b, const Vecto
 
 }
 
-//Résidu minimium
+//Algo identique à celui du prof
+//(Test matrice aléatoire Q1)
+//Les valeurs de x changent bien à chaque itération
+//L'algo ne converge pas toujours en seulement 2 itérations.
+//Testé avec des valeurs de x0 très différentes les unes des autres et nbr d'itérations varie aussi (atteint 9 avec ce que j'ai mis)
+//Pour moi semble ok !
+
+
+//-------------------------------------------------------Résidu minimium--------------------------------------------
+
 void ResMin (const SparseMatrix<double> A,const VectorXd b, const VectorXd x0,const double epsilon,const int kmax, VectorXd & x)
 
 {
   //Initialisation
   int k=0;
-  VectorXd r(b.size()); r=b-A*x0;
-  VectorXd z(b.size());
+  VectorXd r(b.size()),z(b.size());
   double alpha;
+  r=b-A*x0;
   x=x0;
+
   //Boucle
   while ((r.norm()>epsilon) && (k<=kmax))
   {
@@ -93,13 +107,25 @@ void ResMin (const SparseMatrix<double> A,const VectorXd b, const VectorXd x0,co
     x = x + alpha*r;
     r = r - alpha*z;
     k+=1;
+
+    cout<<"x ="<<x<<endl;
+    cout<<"r ="<<r.norm()<<endl;
   }
+
   cout<<"Nombre d'itérations ="<<k<<endl;
+
   if (k>kmax)
   {
     cout<<"Tolérance non atteinte: "<<endl;
   }
 }
+
+//Algo identique au prof
+//(Test matrice aléatoire Q1)
+//x varie bien à chaque itération
+//Nombre d'itérations varie aussi en fonction du x0. Avec des valeurs wtf comme 175*i*i on monte à 8 itérations
+//Algo me semble ok
+
 
 //Résolution à partir d'une Décomposition LU
 VectorXd Resol_LU(SparseMatrix <double> L, SparseMatrix<double> U, VectorXd b)
@@ -144,15 +170,22 @@ VectorXd Resol_LU(SparseMatrix <double> L, SparseMatrix<double> U, VectorXd b)
 
 
 
-//Résidu minimum préconditionné à gauche
+//-----------------------------------------------Résidu minimum préconditionné à gauche--------------------------------------
+
 void ResMin_cond_gauche(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const Eigen::VectorXd x0, const double epsilon, const int kmax, Eigen::VectorXd & x)
 {
+
+  // Initialisation //
+
   int m=A.rows();
-  VectorXd r(b.size()); r=b-A*x0;
-  VectorXd z(b.size()); VectorXd z1(b.size()); VectorXd q(m); VectorXd q1(m); VectorXd w(m);
-  double alpha;
-  SparseMatrix<double> L(m,m);SparseMatrix<double> U(m,m); SparseMatrix<double> E(m,m); SparseMatrix<double> F(m,m); SparseMatrix<double> D(m,m); SparseMatrix<double> D_1(m,m);
+  VectorXd r(b.size()),z(b.size()), z1(b.size()), q(m), q1(m), w(m);
+  SparseMatrix<double> L(m,m), U(m,m), E(m,m), F(m,m), D(m,m), D_1(m,m);
   SparseLU<SparseMatrix<double> , COLAMDOrdering<int> > solver;
+  double alpha;
+  r=b-A*x0;
+
+  // Création de M sous forme  de la décomposition LU //
+
   for (int i=0; i<A.outerSize(); ++i)
   {
     for (SparseMatrix<double>::InnerIterator it(A,i); it; ++it)
@@ -423,6 +456,7 @@ void GMRes(const Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const E
 
 
 /*--------------------LECTURE MATRICE-----------------------*/
+
 SparseMatrix <double>  Lecture_Matrice_A (string fichier)// pour les matrice du 1)
 {
   cout << "Lecture du fichier : "<<fichier<<endl;
@@ -449,8 +483,17 @@ SparseMatrix <double>  Lecture_Matrice_A (string fichier)// pour les matrice du 
 	{
 
 	  flux_A >> i >> j >> a ;
-	  triplets.push_back({i-1,j-1,a});
-	  triplets.push_back({j-1,i-1,a});
+
+    if (i!=j)
+    {
+	     triplets.push_back({i-1,j-1,a});
+	     triplets.push_back({j-1,i-1,a});
+     }
+
+     else
+     {
+       triplets.push_back({i-1,j-1,a});
+     }
 	}
       A.setFromTriplets(triplets.begin(), triplets.end());
     }
@@ -493,4 +536,56 @@ VectorXd Lecture_Matrice_b(string fichier)
     }
   flux_b.close();
   return b;
+}
+
+
+
+
+
+SparseMatrix <double>  Lecture_Matrice_A_2 (string fichier)// pour les matrice du 1)
+{
+  cout << "Lecture du fichier : "<<fichier<<endl;
+  ifstream flux_A(fichier);
+  SparseMatrix <double> A;
+  int n,m,kmax;
+  string ligne;
+  if (flux_A)
+    {
+      for (int i=0; i<27 ; i++)
+	{
+	  getline(flux_A,ligne);
+	}
+      flux_A >> n;
+      flux_A >> m;
+      flux_A >> kmax;
+      cout << "n, m, imax : "<<n<<" "<<m<<" "<<kmax<<endl<<endl;
+      A.resize(n,m);
+      vector<Triplet<double>> triplets;
+      double a(0);
+      int i(0);
+      int j(0);
+      for (int k=0; k<kmax; k++)
+	{
+
+	  flux_A >> i >> j >> a ;
+
+    if (i!=j)
+    {
+	     triplets.push_back({i-1,j-1,a});
+	     triplets.push_back({j-1,i-1,a});
+     }
+
+     else
+     {
+       triplets.push_back({i-1,j-1,a});
+     }
+	}
+      A.setFromTriplets(triplets.begin(), triplets.end());
+    }
+  else
+    {
+      cout << "Ce fichier n'existe pas"<<endl;
+    }
+  flux_A.close();
+  return A;
 }
