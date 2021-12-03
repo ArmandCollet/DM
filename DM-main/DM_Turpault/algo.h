@@ -42,8 +42,4 @@ void GivensOpt(const Eigen::MatrixXd A, Eigen::MatrixXd & Q, Eigen::MatrixXd & R
 
 void resol_syst_triang_sup(const Eigen::MatrixXd A, Eigen::VectorXd & y, const Eigen::VectorXd b);
 
-std::tuple<std::vector<double>,std::vector<int>,std::vector<int>> stockageCSR(const Eigen::MatrixXd A);
-
-void MatVecCSR(const std::tuple<std::vector<double>, std::vector<int>, std::vector<int>> Tab, const Eigen::VectorXd v);
-
 Eigen::VectorXd Resol_LU(Eigen::SparseMatrix<double> L, Eigen::SparseMatrix<double> U,Eigen::VectorXd b);

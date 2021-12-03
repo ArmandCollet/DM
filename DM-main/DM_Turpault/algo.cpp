@@ -6,47 +6,6 @@
 using namespace std;
 using namespace Eigen;
 
-//CSR (inutile à priori)
-std::tuple<vector<double>,vector<int>,vector<int>> stockageCSR(const MatrixXd A)
-{
-  vector<double> AA; vector<int> JA; vector<int> IA;
-  int k;k=0;
-  IA.push_back(1.);
-
-  for (int i=0;i<A.rows();i++)
-  {
-    for (int j=0;j<A.cols();j++)
-    {
-      if (A(i,j)!=0.)
-      {
-        k+=1;
-        AA.push_back(A(i,j));
-        JA.push_back(j+1);
-      }
-    }
-    IA.push_back(k+1);
-  }
-  return std::make_tuple(AA,JA,IA);
-}
-void MatVecCSR(const std::tuple<std::vector<double>, std::vector<int>, std::vector<int>> Tab, const Eigen::VectorXd v)
-{
-  int n; n=v.size();
-  VectorXd y; y.resize(n); y=VectorXd::Constant(n,0.);
-  vector<double> AA; AA=get<0>(Tab);
-  vector<int> JA; JA=get<1>(Tab);
-  vector<int> IA; IA=get<2>(Tab);
-
-  for (int i=0;i<n;i++)
-  {
-    for (int k=IA[i]; k<IA[i+1];k++)
-    {
-      y(i)+=AA[k-1]*v(JA[k-1]-1);
-    }
-    cout<<y(i)<<endl;
-  }
-}
-//Fin CSR
-
 // -------------------------------------Gradient à Pas Optimal---------------------------------------------------
 
 void GradPasOptimal (const SparseMatrix<double> A, const VectorXd b, const VectorXd x0, const double epsilon, const int kmax, VectorXd & x)
@@ -126,6 +85,9 @@ void ResMin (const SparseMatrix<double> A,const VectorXd b, const VectorXd x0,co
 //Nombre d'itérations varie aussi en fonction du x0. Avec des valeurs wtf comme 175*i*i on monte à 8 itérations
 //Algo me semble ok
 
+//---------------------------------------Résolution LU-------------------------------------
+//à voir si l'on s'en sert ou si l'on utilise la résolution traingulaire
+
 
 //Résolution à partir d'une Décomposition LU
 VectorXd Resol_LU(SparseMatrix <double> L, SparseMatrix<double> U, VectorXd b)
@@ -169,7 +131,6 @@ VectorXd Resol_LU(SparseMatrix <double> L, SparseMatrix<double> U, VectorXd b)
 }
 
 
-
 //-----------------------------------------------Résidu minimum préconditionné à gauche--------------------------------------
 
 void ResMin_cond_gauche(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const Eigen::VectorXd x0, const double epsilon, const int kmax, Eigen::VectorXd & x)
@@ -211,9 +172,8 @@ void ResMin_cond_gauche(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, 
   L = (D-E)*D_1; U = (D-F);
   //cout<<L*U-(D-E)*D_1*(D-F)<<endl;
   x = x0;
-  /*cout << "premiere resolution LU"<<endl;
-  q1 = L.triangularView<Lower>().solve(r);
-  q = U.triangularView<Upper>().solve(q1);*/
+  // q1 = L.triangularView<Lower>().solve(r);
+  // q = U.triangularView<Upper>().solve(q1);
   q = Resol_LU(L,U,r);
 
   int k=0;
@@ -238,6 +198,10 @@ void ResMin_cond_gauche(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, 
   }
 }
 
+
+//------------------------------------------------Résidu minimum conditionné à gauche-------------------------------------
+
+
 void ResMin_cond_droite(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const Eigen::VectorXd x0, const double epsilon, const int kmax, Eigen::VectorXd & x)
 {
   int m=A.rows();
@@ -246,7 +210,7 @@ void ResMin_cond_droite(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, 
   VectorXd q(m);
   VectorXd w(m);
   double alpha;
-  SparseMatrix<double> L(m,m);SparseMatrix<double> U(m,m); SparseMatrix<double> E(m,m); SparseMatrix<double> F(m,m); SparseMatrix<double> D(m,m); SparseMatrix<double> D_1(m,m);
+  SparseMatrix<double> L(m,m), U(m,m), E(m,m), F(m,m), D(m,m), D_1(m,m);
 
   for (int i=0; i<A.outerSize(); ++i)
   {
@@ -295,7 +259,7 @@ void ResMin_cond_droite(Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, 
   }
 }
 
-
+//-------------------------------------GMRes-----------------------------------------------------
 
 
 
@@ -455,9 +419,9 @@ void GMRes(const Eigen::SparseMatrix<double> A, const Eigen::VectorXd b, const E
 
 
 
-/*--------------------LECTURE MATRICE-----------------------*/
+//------------------------------------------LECTURE MATRICES-------------------------------------------//
 
-SparseMatrix <double>  Lecture_Matrice_A (string fichier)// pour les matrice du 1)
+SparseMatrix <double>  Lecture_Matrice_A (string fichier)
 {
   cout << "Lecture du fichier : "<<fichier<<endl;
   ifstream flux_A(fichier);
@@ -542,7 +506,7 @@ VectorXd Lecture_Matrice_b(string fichier)
 
 
 
-SparseMatrix <double>  Lecture_Matrice_A_2 (string fichier)// pour les matrice du 1)
+SparseMatrix <double>  Lecture_Matrice_A_2 (string fichier)
 {
   cout << "Lecture du fichier : "<<fichier<<endl;
   ifstream flux_A(fichier);
